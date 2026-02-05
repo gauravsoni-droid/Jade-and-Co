@@ -47,10 +47,10 @@ export default function Hero() {
               Buy a Property
             </Link>
             <Link
-              href="#sell"
+              href="#properties"
               className="inline-block px-5 py-2.5 border-2 border-white text-white font-medium rounded-md hover:bg-white hover:text-gray-900 transition-colors text-base"
             >
-              Sell a Property
+              Rent a Property
             </Link>
           </motion.div>
         </motion.div>
