@@ -6,6 +6,10 @@ import { UltravoxSession } from "ultravox-client";
 interface UltravoxCallOverlayProps {
   joinUrl: string;
   onClose: () => void;
+  /** Optional listing ID for agent context (e.g. from property card "Get a Call"). */
+  listingId?: string | null;
+  /** Optional listing name for agent context (e.g. from property card "Get a Call"). */
+  listingName?: string | null;
 }
 
 type CallStatus =
@@ -33,7 +37,32 @@ type CallStatus =
  *
  * SDK repo: https://github.com/fixie-ai/ultravox-client-sdk-js
  */
-export function UltravoxCallOverlay({ joinUrl, onClose }: UltravoxCallOverlayProps) {
+/**
+ * Builds the join URL with optional listing context as query parameters (URL-encoded).
+ * If no listing context is provided, returns the original joinUrl unchanged.
+ */
+function buildJoinUrlWithContext(
+  joinUrl: string,
+  listingId?: string | null,
+  listingName?: string | null,
+): string {
+  const hasId = listingId != null && String(listingId).trim() !== "";
+  const hasName = listingName != null && String(listingName).trim() !== "";
+  if (!hasId && !hasName) return joinUrl;
+
+  const params = new URLSearchParams();
+  if (hasId) params.set("listingId", String(listingId).trim());
+  if (hasName) params.set("listingName", String(listingName).trim());
+  const separator = joinUrl.includes("?") ? "&" : "?";
+  return `${joinUrl}${separator}${params.toString()}`;
+}
+
+export function UltravoxCallOverlay({
+  joinUrl,
+  onClose,
+  listingId,
+  listingName,
+}: UltravoxCallOverlayProps) {
   const [status, setStatus] = useState<CallStatus>("connecting");
   const [error, setError] = useState<string | null>(null);
   const [transcripts, setTranscripts] = useState<
@@ -41,6 +70,8 @@ export function UltravoxCallOverlay({ joinUrl, onClose }: UltravoxCallOverlayPro
   >([]);
 
   const sessionRef = useRef<UltravoxSession | null>(null);
+
+  const joinUrlWithContext = buildJoinUrlWithContext(joinUrl, listingId, listingName);
 
   useEffect(() => {
     const session = new UltravoxSession();
@@ -69,11 +100,11 @@ export function UltravoxCallOverlay({ joinUrl, onClose }: UltravoxCallOverlayPro
     session.addEventListener("status", onStatus);
     session.addEventListener("transcripts", onTranscripts);
 
-    // Join the call using the join URL from your API route.
+    // Join the call using the join URL (with optional listing context as query params).
     // `joinCall` in the Ultravox SDK is synchronous (returns void), so we use try/catch
     // instead of Promise chaining.
     try {
-      session.joinCall(joinUrl);
+      session.joinCall(joinUrlWithContext);
     } catch (err: unknown) {
       console.error("Failed to join Ultravox call", err);
       setError(
@@ -94,7 +125,7 @@ export function UltravoxCallOverlay({ joinUrl, onClose }: UltravoxCallOverlayPro
       session.removeEventListener("transcripts", onTranscripts);
       sessionRef.current = null;
     };
-  }, [joinUrl]);
+  }, [joinUrlWithContext]);
 
   const handleEndCall = () => {
     try {
@@ -158,7 +189,7 @@ export function UltravoxCallOverlay({ joinUrl, onClose }: UltravoxCallOverlayPro
           {joinUrl.startsWith("http") && (
             <button
               type="button"
-              onClick={() => window.open(joinUrl, "_blank", "noopener,noreferrer")}
+              onClick={() => window.open(joinUrlWithContext, "_blank", "noopener,noreferrer")}
               className="w-full rounded-md bg-gray-800 px-4 py-2 text-xs font-medium text-white hover:bg-gray-700"
             >
               Open full call UI in new tab

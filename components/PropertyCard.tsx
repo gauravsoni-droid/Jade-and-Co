@@ -14,7 +14,11 @@ interface PropertyCardProps {
 
 export default function PropertyCard({ property }: PropertyCardProps) {
   const [imageError, setImageError] = useState(false);
-  const [outboundJoinUrl, setOutboundJoinUrl] = useState<string | null>(null);
+  const [callState, setCallState] = useState<{
+    joinUrl: string;
+    listingId: string;
+    listingName: string;
+  } | null>(null);
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat("en-US", {
@@ -32,6 +36,11 @@ export default function PropertyCard({ property }: PropertyCardProps) {
     try {
       const response = await fetch("/api/ultravox/get-call", {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          listingId: property.id,
+          listingName: property.name,
+        }),
       });
 
       if (!response.ok) {
@@ -44,8 +53,11 @@ export default function PropertyCard({ property }: PropertyCardProps) {
         throw new Error("Ultravox did not return a join URL");
       }
 
-      // Store joinUrl and show in-page call overlay instead of opening wss:// in a new tab
-      setOutboundJoinUrl(data.joinUrl);
+      setCallState({
+        joinUrl: data.joinUrl,
+        listingId: property.id,
+        listingName: property.name,
+      });
     } catch (error) {
       console.error("Error triggering Ultravox outbound call:", error);
       alert("Sorry, we couldn't start the call. Please try again in a moment.");
@@ -108,10 +120,12 @@ export default function PropertyCard({ property }: PropertyCardProps) {
         </motion.div>
       </Link>
 
-      {outboundJoinUrl && (
+      {callState && (
         <UltravoxCallOverlay
-          joinUrl={outboundJoinUrl}
-          onClose={() => setOutboundJoinUrl(null)}
+          joinUrl={callState.joinUrl}
+          listingId={callState.listingId}
+          listingName={callState.listingName}
+          onClose={() => setCallState(null)}
         />
       )}
     </>
