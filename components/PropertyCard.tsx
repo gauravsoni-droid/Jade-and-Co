@@ -3,7 +3,7 @@
 import { motion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type React from "react";
 import { Property } from "@/data/properties";
 import { UltravoxCallOverlay } from "./UltravoxCallOverlay";
@@ -19,6 +19,24 @@ export default function PropertyCard({ property }: PropertyCardProps) {
     listingId: string;
     listingName: string;
   } | null>(null);
+  const [isNameOverlayOpen, setIsNameOverlayOpen] = useState(false);
+  const [storedUserName, setStoredUserName] = useState<string | null>(null);
+  const [nameInput, setNameInput] = useState("");
+
+  useEffect(() => {
+    // Load any previously saved name so we can pre-fill the field.
+    try {
+      if (typeof window !== "undefined") {
+        const saved = window.localStorage.getItem("jade-ultravox-user-name");
+        if (saved) {
+          setStoredUserName(saved);
+          setNameInput(saved);
+        }
+      }
+    } catch {
+      // Ignore storage errors and just start with an empty name.
+    }
+  }, []);
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat("en-US", {
@@ -29,9 +47,15 @@ export default function PropertyCard({ property }: PropertyCardProps) {
     }).format(price);
   };
 
-  const handleGetCall = async (e: React.MouseEvent<HTMLButtonElement>) => {
+  const handleGetCall = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
     e.stopPropagation();
+    // Open the in-page name overlay instead of a browser prompt.
+    setIsNameOverlayOpen(true);
+  };
+
+  const handleConfirmNameAndStartCall = async () => {
+    const finalName = nameInput.trim();
 
     try {
       const response = await fetch("/api/ultravox/get-call", {
@@ -40,6 +64,7 @@ export default function PropertyCard({ property }: PropertyCardProps) {
         body: JSON.stringify({
           listingId: property.id,
           listingName: property.name,
+          userName: finalName || undefined,
         }),
       });
 
@@ -53,11 +78,24 @@ export default function PropertyCard({ property }: PropertyCardProps) {
         throw new Error("Ultravox did not return a join URL");
       }
 
+      // Persist the name for future calls in this browsing session.
+      try {
+        if (typeof window !== "undefined") {
+          if (finalName) {
+            window.localStorage.setItem("jade-ultravox-user-name", finalName);
+          }
+        }
+      } catch {
+        // Ignore storage errors; they are non-fatal.
+      }
+      setStoredUserName(finalName || null);
+
       setCallState({
         joinUrl: data.joinUrl,
         listingId: property.id,
         listingName: property.name,
       });
+      setIsNameOverlayOpen(false);
     } catch (error) {
       console.error("Error triggering Ultravox outbound call:", error);
       alert("Sorry, we couldn't start the call. Please try again in a moment.");
@@ -119,6 +157,43 @@ export default function PropertyCard({ property }: PropertyCardProps) {
           </div>
         </motion.div>
       </Link>
+
+      {/* Name collection overlay (shown before starting the Ultravox call) */}
+      {isNameOverlayOpen && (
+        <div className="fixed inset-0 z-[55] flex items-center justify-center bg-black/60">
+          <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
+            <h2 className="mb-2 text-lg font-semibold text-gray-900">
+              Before we start the call
+            </h2>
+            <p className="mb-4 text-sm text-gray-700">
+              Please tell us your name so our voice agent can address you personally.
+            </p>
+            <input
+              type="text"
+              value={nameInput}
+              onChange={(e) => setNameInput(e.target.value)}
+              placeholder="Your name"
+              className="mb-4 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-gray-900"
+            />
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setIsNameOverlayOpen(false)}
+                className="rounded-md px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmNameAndStartCall}
+                className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800"
+              >
+                Start Call
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {callState && (
         <UltravoxCallOverlay

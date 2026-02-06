@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 const ULTRAVOX_BASE_URL =
   process.env.ULTRAVOX_BASE_URL ?? "https://api.ultravox.ai/api";
 
-type ListingContext = { listingId?: string; listingName?: string };
+type ListingContext = { listingId?: string; listingName?: string; userName?: string };
 
 async function createUltravoxCall(agentId: string, listing?: ListingContext) {
   const apiKey = process.env.ULTRAVOX_API_KEY;
@@ -21,9 +21,15 @@ async function createUltravoxCall(agentId: string, listing?: ListingContext) {
     (listing.listingId?.trim() ?? "") !== "" &&
     (listing.listingName?.trim() ?? "") !== "";
 
+  const hasUserName = listing && (listing.userName?.trim() ?? "") !== "";
+
+  const baseGreeting = hasUserName
+    ? `The caller's name is ${listing!.userName}.`
+    : "Caller name was not provided.";
+
   const userMessage = hasListing
-    ? `The user requested a call about a specific listing. Listing ID: ${listing!.listingId}. Listing name: ${listing!.listingName}. Please use this context in the conversation.`
-    : "Hello from Jade & Co website (outbound call)";
+    ? `${baseGreeting} The user requested a call about a specific listing. Listing ID: ${listing!.listingId}. Listing name: ${listing!.listingName}. Please use this context in the conversation.`
+    : `${baseGreeting} Hello from Jade & Co website (outbound call).`;
 
   const response = await fetch(`${ULTRAVOX_BASE_URL}/agents/${agentId}/calls`, {
     method: "POST",
@@ -33,14 +39,26 @@ async function createUltravoxCall(agentId: string, listing?: ListingContext) {
       "X-API-Key": apiKey,
     },
     body: JSON.stringify({
-      templateContext: hasListing ? { listingId: listing!.listingId, listingName: listing!.listingName } : {},
+      templateContext: {
+        ...(hasListing && {
+          listingId: listing!.listingId,
+          listingName: listing!.listingName,
+        }),
+        ...(hasUserName && { userName: listing!.userName }),
+      },
       initialMessages: [
         {
           role: "MESSAGE_ROLE_USER",
           text: userMessage,
         },
       ],
-      metadata: hasListing ? { listingId: listing!.listingId, listingName: listing!.listingName } : {},
+      metadata: {
+        ...(hasListing && {
+          listingId: listing!.listingId,
+          listingName: listing!.listingName,
+        }),
+        ...(hasUserName && { userName: listing!.userName }),
+      },
     }),
   });
 
@@ -70,10 +88,11 @@ export async function POST(req: NextRequest) {
     let listing: ListingContext | undefined;
     try {
       const body = await req.json();
-      if (body && (body.listingId != null || body.listingName != null)) {
+      if (body && (body.listingId != null || body.listingName != null || body.userName != null)) {
         listing = {
           listingId: typeof body.listingId === "string" ? body.listingId : undefined,
           listingName: typeof body.listingName === "string" ? body.listingName : undefined,
+          userName: typeof body.userName === "string" ? body.userName : undefined,
         };
       }
     } catch {
