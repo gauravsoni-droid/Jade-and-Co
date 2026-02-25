@@ -126,7 +126,7 @@ export default function PropertyCard({ property }: PropertyCardProps) {
                 setImageError(true);
               }}
             />
-            
+
             {/* Hover Overlay */}
             <motion.div
               className="absolute inset-0 bg-black/70 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300"
@@ -141,7 +141,7 @@ export default function PropertyCard({ property }: PropertyCardProps) {
                 </p>
                 <button
                   onClick={handleGetCall}
-                  className="px-6 py-3 bg-white text-gray-900 font-medium rounded-md hover:bg-gray-100 transition-colors"
+                  className="cursor-pointer px-6 py-3 bg-white text-gray-900 font-medium rounded-md hover:bg-gray-100 transition-colors"
                 >
                   Get a Call
                 </button>

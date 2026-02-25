@@ -95,7 +95,7 @@ export default function Header() {
             </span>
             <button
               onClick={handleCallNow}
-              className="px-6 py-3 font-medium rounded-md bg-gray-900 text-white hover:bg-gray-800 transition-colors"
+              className="cursor-pointer px-6 py-3 font-medium rounded-md bg-gray-900 text-white hover:bg-gray-800 transition-colors"
             >
               Call Us
             </button>
@@ -140,7 +140,7 @@ export default function Header() {
             </span>
             <button
               onClick={handleCallNow}
-              className={`px-6 py-3 font-medium rounded-md transition-all duration-300 shadow-sm ${
+              className={`cursor-pointer px-6 py-3 font-medium rounded-md transition-all duration-300 shadow-sm ${
                 isScrolled
                   ? "bg-gray-900 text-white hover:bg-gray-800 px-5 py-2.5 text-sm"
                   : "bg-gray-900 text-white hover:bg-gray-800"
